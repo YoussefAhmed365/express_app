@@ -1,35 +1,31 @@
-import fs from "node:fs/promises";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
+import Book from "../models/books.model.js";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const booksFilePath = path.join(__dirname, "../json/books.json");
-
-// Read books from JSON file
-const readBooks = async () => {
+// GET /books: Get all books with pagination and populated author
+const getAllBooks = async (req, res, next) => {
     try {
-        const data = await fs.readFile(booksFilePath, "utf-8");
-        return JSON.parse(data);
-    } catch (error) {
-        if (error.code === "ENOENT") {
-            return [];
-        }
-        throw error;
-    }
-};
+        const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+        const limit = Math.max(1, parseInt(req.query.limit, 10) || 10);
+        const skip = (page - 1) * limit;
 
-// Write books to JSON file
-const writeBooks = async (books) => {
-    await fs.writeFile(booksFilePath, JSON.stringify(books, null, 4), "utf-8");
-};
+        const [books, total] = await Promise.all([
+            Book.find()
+                .populate("author")
+                .skip(skip)
+                .limit(limit)
+                .sort({ createdAt: -1 }),
+            Book.countDocuments(),
+        ]);
 
-// GET /books:
-const getAllBooks = async (_req, res, next) => {
-    try {
-        const books = await readBooks();
+        const totalPages = Math.ceil(total / limit) || 1;
+
         res.status(200).json({
             status: true,
+            pagination: {
+                total,
+                page,
+                limit,
+                totalPages,
+            },
             data: books,
         });
     } catch (error) {
@@ -37,13 +33,11 @@ const getAllBooks = async (_req, res, next) => {
     }
 };
 
-// GET /books/:id:
+// GET /books/:id: Get a single book by ID with populated author
 const getBookById = async (req, res, next) => {
     try {
-        const bookId = parseInt(req.params.id, 10);
-        const books = await readBooks();
+        const book = await Book.findById(req.params.id).populate("author");
 
-        const book = books.find((b) => b.id === bookId);
         if (!book) {
             const error = new Error(`Book with ID ${req.params.id} not found.`);
             error.statusCode = 404;
@@ -59,95 +53,60 @@ const getBookById = async (req, res, next) => {
     }
 };
 
-// POST /books:
+// POST /books: Create a new book
 const createBook = async (req, res, next) => {
     try {
-        const { name, ...otherProps } = req.body;
-
-        if (!name || typeof name !== "string" || name.trim() === "") {
-            const error = new Error("Invalid book data. 'name' is required and must be a non-empty string.");
-            error.statusCode = 400;
-            throw error;
-        }
-
-        const books = await readBooks();
-
-        const maxId = books.reduce((max, b) => (b.id > max ? b.id : max), 0);
-        const newBook = {
-            id: maxId + 1,
-            name: name.trim(),
-            ...otherProps,
-        };
-
-        books.push(newBook);
-        await writeBooks(books);
+        const newBook = await Book.create(req.body);
+        const populatedBook = await Book.findById(newBook._id).populate("author");
 
         res.status(201).json({
             status: true,
             message: "Book created successfully.",
-            data: newBook,
+            data: populatedBook || newBook,
         });
     } catch (error) {
         next(error);
     }
 };
 
-// PUT /books/:id:
+// PUT /books/:id: Update a book by ID
 const updateBook = async (req, res, next) => {
     try {
-        const bookId = parseInt(req.params.id, 10);
-        const { name, ...otherProps } = req.body;
+        const updatedBook = await Book.findByIdAndUpdate(
+            req.params.id,
+            req.body,
+            {
+                new: true,
+                runValidators: true,
+            }
+        ).populate("author");
 
-        if (!name || typeof name !== "string" || name.trim() === "") {
-            const error = new Error("Invalid book data. 'name' is required and must be a non-empty string.");
-            error.statusCode = 400;
-            throw error;
-        }
-
-        const books = await readBooks();
-        const bookIndex = books.findIndex((b) => b.id === bookId);
-
-        if (bookIndex === -1) {
+        if (!updatedBook) {
             const error = new Error(`Book with ID ${req.params.id} not found.`);
             error.statusCode = 404;
             throw error;
         }
-
-        books[bookIndex] = {
-            ...books[bookIndex],
-            name: name.trim(),
-            ...otherProps,
-            id: bookId,
-        };
-
-        await writeBooks(books);
 
         res.status(200).json({
             status: true,
             message: "Book updated successfully.",
-            data: books[bookIndex],
+            data: updatedBook,
         });
     } catch (error) {
         next(error);
     }
 };
 
-// DELETE /books/:id:
+// DELETE /books/:id: Delete a book by ID
 const deleteBook = async (req, res, next) => {
     try {
-        const bookId = parseInt(req.params.id, 10);
-        const books = await readBooks();
+        const deletedBook = await Book.findByIdAndDelete(req.params.id);
 
-        const bookIndex = books.findIndex((b) => b.id === bookId);
-
-        if (bookIndex === -1) {
+        if (!deletedBook) {
             const error = new Error(`Book with ID ${req.params.id} not found.`);
             error.statusCode = 404;
             throw error;
         }
-
-        const [deletedBook] = books.splice(bookIndex, 1);
-        await writeBooks(books);
 
         res.status(200).json({
             status: true,
