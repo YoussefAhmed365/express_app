@@ -1,6 +1,5 @@
 import Author from "../models/authors.model.js";
 
-// GET /authors
 const getAllAuthors = async (_req, res, next) => {
     try {
         const authors = await Author.find();
@@ -14,7 +13,6 @@ const getAllAuthors = async (_req, res, next) => {
     }
 };
 
-// GET /authors/:id
 const getAuthorById = async (req, res, next) => {
     try {
         const author = await Author.findById(req.params.id);
@@ -33,7 +31,6 @@ const getAuthorById = async (req, res, next) => {
     }
 };
 
-// POST /authors
 const createAuthor = async (req, res, next) => {
     try {
         const newAuthor = await Author.create(req.body);

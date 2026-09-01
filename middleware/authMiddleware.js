@@ -2,7 +2,6 @@ import jwt from "jsonwebtoken";
 
 const JWT_SECRET = process.env.JWT_SECRET || "super_secret_jwt_key_12345";
 
-// Middleware to verify JWT token
 const verifyToken = (req, _res, next) => {
     try {
         const authHeader = req.headers.authorization || req.headers.Authorization;
@@ -27,7 +26,6 @@ const verifyToken = (req, _res, next) => {
     }
 };
 
-// Middleware to restrict access based on roles
 const restrictTo = (...allowedRoles) => {
     return (req, _res, next) => {
         if (!req.user || !allowedRoles.includes(req.user.role)) {

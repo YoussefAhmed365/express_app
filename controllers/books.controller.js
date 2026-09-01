@@ -1,8 +1,18 @@
 import Book from "../models/books.model.js";
 
-// GET /books: Get all books with pagination and populated author
 const getAllBooks = async (req, res, next) => {
     try {
+        const hasPagination = req.query.page || req.query.limit;
+
+        if (!hasPagination) {
+            const books = await Book.find().populate("author").sort({ createdAt: -1 });
+            return res.status(200).json({
+                status: true,
+                total: books.length,
+                data: books,
+            });
+        }
+
         const page = Math.max(1, parseInt(req.query.page, 10) || 1);
         const limit = Math.max(1, parseInt(req.query.limit, 10) || 10);
         const skip = (page - 1) * limit;
@@ -33,7 +43,6 @@ const getAllBooks = async (req, res, next) => {
     }
 };
 
-// GET /books/:id: Get a single book by ID with populated author
 const getBookById = async (req, res, next) => {
     try {
         const book = await Book.findById(req.params.id).populate("author");
@@ -53,7 +62,6 @@ const getBookById = async (req, res, next) => {
     }
 };
 
-// POST /books: Create a new book
 const createBook = async (req, res, next) => {
     try {
         const newBook = await Book.create(req.body);
@@ -69,7 +77,6 @@ const createBook = async (req, res, next) => {
     }
 };
 
-// PUT /books/:id: Update a book by ID
 const updateBook = async (req, res, next) => {
     try {
         const updatedBook = await Book.findByIdAndUpdate(
@@ -97,7 +104,6 @@ const updateBook = async (req, res, next) => {
     }
 };
 
-// DELETE /books/:id: Delete a book by ID
 const deleteBook = async (req, res, next) => {
     try {
         const deletedBook = await Book.findByIdAndDelete(req.params.id);

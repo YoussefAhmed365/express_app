@@ -39,7 +39,6 @@ const userSchema = new mongoose.Schema(
     }
 );
 
-// Hash password before saving if modified
 userSchema.pre("save", async function () {
     if (!this.isModified("password")) {
         return;
@@ -48,12 +47,10 @@ userSchema.pre("save", async function () {
     this.password = await bcrypt.hash(this.password, salt);
 });
 
-// Compare password helper method
 userSchema.methods.comparePassword = async function (candidatePassword) {
     return bcrypt.compare(candidatePassword, this.password);
 };
 
-// Omit password from JSON serialization
 userSchema.methods.toJSON = function () {
     const userObject = this.toObject();
     delete userObject.password;

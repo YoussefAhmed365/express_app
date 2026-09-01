@@ -2,7 +2,6 @@ import jwt from "jsonwebtoken";
 import User from "../models/users.model.js";
 import { JWT_SECRET } from "../middleware/authMiddleware.js";
 
-// POST /register
 const register = async (req, res, next) => {
     try {
         const { name, email, password, role } = req.body;
@@ -44,7 +43,6 @@ const register = async (req, res, next) => {
     }
 };
 
-// POST /login
 const login = async (req, res, next) => {
     try {
         const { email, password } = req.body;
